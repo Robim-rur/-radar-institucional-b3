@@ -15,7 +15,9 @@ st.set_page_config(
 )
 
 st.title("📊 Radar Institucional Unificado")
-st.write("Fluxo + Armadilhas + Continuidade Probabilística")
+st.write(
+    "Fluxo + Armadilhas + Continuidade + Fibonacci Institucional"
+)
 
 # =========================================================
 # UNIVERSO
@@ -45,7 +47,11 @@ UNIVERSO = [
 # =========================================================
 
 def ema(series, period=69):
-    return series.ewm(span=period, adjust=False).mean()
+
+    return series.ewm(
+        span=period,
+        adjust=False
+    ).mean()
 
 # =========================================================
 # SCORE ARMADILHA
@@ -56,20 +62,32 @@ def score_armadilha(df):
     df = df.copy()
 
     df["EMA69"] = ema(df["Close"], 69)
-    df["Vol_MA20"] = df["Volume"].rolling(20).mean()
+
+    df["Vol_MA20"] = (
+        df["Volume"]
+        .rolling(20)
+        .mean()
+    )
 
     ultimo = df.iloc[-1]
+
     anterior = df.iloc[-2]
 
     bull = 0
     bear = 0
 
-    rng = ultimo["High"] - ultimo["Low"]
+    rng = (
+        ultimo["High"]
+        - ultimo["Low"]
+    )
 
     if rng == 0:
         return 0
 
-    # Bull Trap
+    # =====================================================
+    # BULL TRAP
+    # =====================================================
+
     if (
         ultimo["High"] > anterior["High"]
         and ultimo["Close"] < anterior["High"]
@@ -77,7 +95,8 @@ def score_armadilha(df):
         bull += 40
 
     if (
-        ultimo["Volume"] > ultimo["Vol_MA20"] * 1.3
+        ultimo["Volume"]
+        > ultimo["Vol_MA20"] * 1.3
         and ultimo["Close"] < ultimo["Open"]
     ):
         bull += 25
@@ -85,7 +104,10 @@ def score_armadilha(df):
     if ultimo["Close"] < ultimo["EMA69"]:
         bull += 15
 
-    # Bear Trap
+    # =====================================================
+    # BEAR TRAP
+    # =====================================================
+
     if (
         ultimo["Low"] < anterior["Low"]
         and ultimo["Close"] > anterior["Low"]
@@ -93,7 +115,8 @@ def score_armadilha(df):
         bear += 40
 
     if (
-        ultimo["Volume"] > ultimo["Vol_MA20"] * 1.3
+        ultimo["Volume"]
+        > ultimo["Vol_MA20"] * 1.3
         and ultimo["Close"] > ultimo["Open"]
     ):
         bear += 25
@@ -113,36 +136,67 @@ def score_fluxo(df):
 
     df["EMA69"] = ema(df["Close"], 69)
 
-    df["Ret"] = df["Close"].pct_change()
+    df["Ret"] = (
+        df["Close"]
+        .pct_change()
+    )
 
-    df["Vol_MA20"] = df["Volume"].rolling(20).mean()
+    df["Vol_MA20"] = (
+        df["Volume"]
+        .rolling(20)
+        .mean()
+    )
 
     ultimo = df.iloc[-1]
 
     score = 0
 
-    # Tendência
+    # =====================================================
+    # TENDÊNCIA
+    # =====================================================
+
     if ultimo["Close"] > ultimo["EMA69"]:
         score += 30
 
-    # Volume
-    if ultimo["Volume"] > ultimo["Vol_MA20"] * 1.5:
+    # =====================================================
+    # VOLUME
+    # =====================================================
+
+    if (
+        ultimo["Volume"]
+        > ultimo["Vol_MA20"] * 1.5
+    ):
         score += 30
 
-    elif ultimo["Volume"] > ultimo["Vol_MA20"]:
+    elif (
+        ultimo["Volume"]
+        > ultimo["Vol_MA20"]
+    ):
         score += 15
 
-    # Retorno positivo
+    # =====================================================
+    # RETORNO POSITIVO
+    # =====================================================
+
     if ultimo["Ret"] > 0:
         score += 20
 
-    # Fechamento forte
-    rng = ultimo["High"] - ultimo["Low"]
+    # =====================================================
+    # FECHAMENTO FORTE
+    # =====================================================
+
+    rng = (
+        ultimo["High"]
+        - ultimo["Low"]
+    )
 
     if rng > 0:
 
         pos = (
-            (ultimo["Close"] - ultimo["Low"])
+            (
+                ultimo["Close"]
+                - ultimo["Low"]
+            )
             / rng
         )
 
@@ -161,15 +215,26 @@ def score_continuidade(df, fluxo_score):
 
     df["EMA69"] = ema(df["Close"], 69)
 
-    df["Ret"] = df["Close"].pct_change()
+    df["Ret"] = (
+        df["Close"]
+        .pct_change()
+    )
 
-    vol = df["Ret"].rolling(20).std().iloc[-1]
+    vol = (
+        df["Ret"]
+        .rolling(20)
+        .std()
+        .iloc[-1]
+    )
 
     ultimo = df.iloc[-1]
 
     prob = 50
 
-    prob += (fluxo_score - 50) * 0.5
+    prob += (
+        (fluxo_score - 50)
+        * 0.5
+    )
 
     prob += (
         (
@@ -181,6 +246,88 @@ def score_continuidade(df, fluxo_score):
     prob -= vol * 800
 
     return max(5, min(95, prob))
+
+# =========================================================
+# SCORE FIBONACCI INSTITUCIONAL
+# =========================================================
+
+def score_fibonacci(df):
+
+    df = df.copy()
+
+    df["EMA69"] = ema(df["Close"], 69)
+
+    df["Vol_MA20"] = (
+        df["Volume"]
+        .rolling(20)
+        .mean()
+    )
+
+    # =====================================================
+    # ÚLTIMOS 60 CANDLES
+    # =====================================================
+
+    periodo = df.tail(60)
+
+    topo = periodo["High"].max()
+
+    fundo = periodo["Low"].min()
+
+    amplitude = topo - fundo
+
+    if amplitude <= 0:
+        return 0
+
+    # =====================================================
+    # FIBONACCI
+    # =====================================================
+
+    fib_382 = topo - (amplitude * 0.382)
+
+    fib_50 = topo - (amplitude * 0.50)
+
+    fib_618 = topo - (amplitude * 0.618)
+
+    ultimo = df.iloc[-1]
+
+    close = ultimo["Close"]
+
+    score = 0
+
+    # =====================================================
+    # PROXIMIDADE DAS REGIÕES
+    # =====================================================
+
+    dist_382 = abs(close - fib_382) / close
+    dist_50 = abs(close - fib_50) / close
+    dist_618 = abs(close - fib_618) / close
+
+    if dist_382 < 0.015:
+        score += 20
+
+    if dist_50 < 0.015:
+        score += 30
+
+    if dist_618 < 0.015:
+        score += 40
+
+    # =====================================================
+    # REAÇÃO INSTITUCIONAL
+    # =====================================================
+
+    if close > ultimo["Open"]:
+        score += 10
+
+    if (
+        ultimo["Volume"]
+        > ultimo["Vol_MA20"]
+    ):
+        score += 10
+
+    if close > ultimo["EMA69"]:
+        score += 10
+
+    return min(score, 100)
 
 # =========================================================
 # EXECUÇÃO
@@ -208,9 +355,18 @@ if st.button("📡 Rodar Radar"):
                 auto_adjust=True
             )
 
-            # Corrige MultiIndex do yfinance
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
+            # =================================================
+            # CORREÇÃO MULTIINDEX
+            # =================================================
+
+            if isinstance(
+                df.columns,
+                pd.MultiIndex
+            ):
+                df.columns = (
+                    df.columns
+                    .get_level_values(0)
+                )
 
             # =================================================
             # VALIDAÇÃO
@@ -230,57 +386,100 @@ if st.button("📡 Rodar Radar"):
 
             flux = score_fluxo(df)
 
-            cont = score_continuidade(df, flux)
+            cont = score_continuidade(
+                df,
+                flux
+            )
+
+            fib = score_fibonacci(df)
 
             # =================================================
             # SCORE FINAL
             # =================================================
 
             final_score = (
-                (0.30 * arm)
-                + (0.35 * flux)
-                + (0.35 * cont)
+                (0.25 * arm)
+                + (0.30 * flux)
+                + (0.30 * cont)
+                + (0.15 * fib)
             )
 
             resultados.append({
-                "Ticker": ticker.replace(".SA", ""),
-                "Armadilha": round(arm, 1),
-                "Fluxo": round(flux, 1),
-                "Continuidade": round(cont, 1),
-                "Score Final": round(final_score, 1)
+
+                "Ticker": (
+                    ticker
+                    .replace(".SA", "")
+                ),
+
+                "Armadilha": round(
+                    arm,
+                    1
+                ),
+
+                "Fluxo": round(
+                    flux,
+                    1
+                ),
+
+                "Continuidade": round(
+                    cont,
+                    1
+                ),
+
+                "Fibonacci": round(
+                    fib,
+                    1
+                ),
+
+                "Score Final": round(
+                    final_score,
+                    1
+                )
             })
 
         except Exception as e:
 
-            st.warning(f"Erro em {ticker}: {e}")
+            st.warning(
+                f"Erro em {ticker}: {e}"
+            )
 
             continue
 
         progresso.progress(
-            (i + 1) / len(UNIVERSO)
+            (i + 1)
+            / len(UNIVERSO)
         )
 
-    # =========================================================
+    # =====================================================
     # RESULTADOS
-    # =========================================================
+    # =====================================================
 
     if resultados:
 
-        df_final = pd.DataFrame(resultados)
-
-        df_final = df_final.sort_values(
-            "Score Final",
-            ascending=False
+        df_final = pd.DataFrame(
+            resultados
         )
 
-        st.subheader("🏆 Ranking Institucional")
+        df_final = (
+            df_final
+            .sort_values(
+                "Score Final",
+                ascending=False
+            )
+        )
+
+        st.subheader(
+            "🏆 Ranking Institucional"
+        )
 
         st.dataframe(
             df_final,
             use_container_width=True
         )
 
-        st.subheader("🔥 Top 5")
+        st.subheader(
+            "🔥 Top 5"
+        )
 
         st.dataframe(
             df_final.head(5),
