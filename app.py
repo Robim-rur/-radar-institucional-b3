@@ -102,6 +102,7 @@ def score_armadilha(df):
         return 0
 
     # Bull Trap
+
     if (
         ultimo["High"] > anterior["High"]
         and ultimo["Close"] < anterior["High"]
@@ -119,6 +120,7 @@ def score_armadilha(df):
         bull += 15
 
     # Bear Trap
+
     if (
         ultimo["Low"] < anterior["Low"]
         and ultimo["Close"] > anterior["Low"]
@@ -163,10 +165,12 @@ def score_fluxo(df):
     score = 0
 
     # Tendência
+
     if ultimo["Close"] > ultimo["EMA69"]:
         score += 30
 
     # Volume
+
     if (
         ultimo["Volume"]
         > ultimo["Vol_MA20"] * 1.5
@@ -180,10 +184,12 @@ def score_fluxo(df):
         score += 15
 
     # Retorno positivo
+
     if ultimo["Ret"] > 0:
         score += 20
 
     # Fechamento forte
+
     rng = (
         ultimo["High"]
         - ultimo["Low"]
@@ -329,10 +335,9 @@ def analisar_ativo(ticker):
         )
 
         # Corrige MultiIndex
-        if isinstance(
-            df.columns,
-            pd.MultiIndex
-        ):
+
+        if isinstance(df.columns, pd.MultiIndex):
+
             df.columns = (
                 df.columns
                 .get_level_values(0)
@@ -344,8 +349,11 @@ def analisar_ativo(ticker):
         if len(df) < 80:
             return None
 
+        # Scores
+
         arm = score_armadilha(df)
 
+        # Inversão correta da armadilha
         arm_ajustada = 100 - arm
 
         flux = score_fluxo(df)
@@ -357,6 +365,8 @@ def analisar_ativo(ticker):
 
         fib = score_fibonacci(df)
 
+        # Score Final
+
         final_score = (
             (0.25 * arm_ajustada)
             + (0.30 * flux)
@@ -365,12 +375,33 @@ def analisar_ativo(ticker):
         )
 
         return {
+
             "Ticker": ticker.replace(".SA", ""),
-            "Armadilha": round(arm, 1),
-            "Fluxo": round(flux, 1),
-            "Continuidade": round(cont, 1),
-            "Fibonacci": round(fib, 1),
-            "Score Final": round(final_score, 1)
+
+            "Armadilha": round(
+                arm,
+                1
+            ),
+
+            "Fluxo": round(
+                flux,
+                1
+            ),
+
+            "Continuidade": round(
+                cont,
+                1
+            ),
+
+            "Fibonacci": round(
+                fib,
+                1
+            ),
+
+            "Score Final": round(
+                final_score,
+                1
+            )
         }
 
     except Exception as e:
@@ -398,10 +429,12 @@ if st.button("📌 Escanear Ativo"):
         ativo_escolhido
     )
 
-    if resultado_individual:
+    if resultado_individual is not None:
 
         st.dataframe(
-            pd.DataFrame([resultado_individual]),
+            pd.DataFrame(
+                [resultado_individual]
+            ),
             use_container_width=True
         )
 
@@ -427,30 +460,25 @@ if st.button("🚀 Rodar Radar Geral"):
 
         resultado = analisar_ativo(ticker)
 
-        if resultado:
+        if resultado is not None:
+
             resultados.append(resultado)
 
         progresso.progress(
-            (i + 1)
-            / len(UNIVERSO)
+            (i + 1) / len(UNIVERSO)
         )
 
     # =====================================================
     # RESULTADOS
     # =====================================================
 
-    if resultados:
+    if len(resultados) > 0:
 
-        df_final = pd.DataFrame(
-            resultados
-        )
+        df_final = pd.DataFrame(resultados)
 
-        df_final = (
-            df_final
-            .sort_values(
-                "Score Final",
-                ascending=False
-            )
+        df_final = df_final.sort_values(
+            "Score Final",
+            ascending=False
         )
 
         st.subheader(
@@ -469,12 +497,6 @@ if st.button("🚀 Rodar Radar Geral"):
         st.dataframe(
             df_final.head(10),
             use_container_width=True
-        )
-
-    else:
-
-        st.error(
-            "Nenhum ativo retornou dados válidos."
         )
 
     else:
