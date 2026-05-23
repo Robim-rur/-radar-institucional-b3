@@ -15,6 +15,7 @@ st.set_page_config(
 )
 
 st.title("📊 Radar Institucional Unificado")
+
 st.write(
     "Fluxo + Armadilhas + Continuidade + Fibonacci Institucional"
 )
@@ -151,17 +152,11 @@ def score_fluxo(df):
 
     score = 0
 
-    # =====================================================
-    # TENDÊNCIA
-    # =====================================================
-
+    # Tendência
     if ultimo["Close"] > ultimo["EMA69"]:
         score += 30
 
-    # =====================================================
-    # VOLUME
-    # =====================================================
-
+    # Volume
     if (
         ultimo["Volume"]
         > ultimo["Vol_MA20"] * 1.5
@@ -174,17 +169,11 @@ def score_fluxo(df):
     ):
         score += 15
 
-    # =====================================================
-    # RETORNO POSITIVO
-    # =====================================================
-
+    # Retorno positivo
     if ultimo["Ret"] > 0:
         score += 20
 
-    # =====================================================
-    # FECHAMENTO FORTE
-    # =====================================================
-
+    # Fechamento forte
     rng = (
         ultimo["High"]
         - ultimo["Low"]
@@ -200,7 +189,7 @@ def score_fluxo(df):
             / rng
         )
 
-        if pos > 0.8:
+        if pos > 0.7:
             score += 20
 
     return min(score, 100)
@@ -233,7 +222,7 @@ def score_continuidade(df, fluxo_score):
 
     prob += (
         (fluxo_score - 50)
-        * 0.5
+        * 0.6
     )
 
     prob += (
@@ -241,14 +230,15 @@ def score_continuidade(df, fluxo_score):
             ultimo["Close"]
             / ultimo["EMA69"]
         ) - 1
-    ) * 150
+    ) * 200
 
-    prob -= vol * 800
+    # Penalização mais leve
+    prob -= vol * 400
 
     return max(5, min(95, prob))
 
 # =========================================================
-# SCORE FIBONACCI INSTITUCIONAL
+# SCORE FIBONACCI
 # =========================================================
 
 def score_fibonacci(df):
@@ -263,10 +253,6 @@ def score_fibonacci(df):
         .mean()
     )
 
-    # =====================================================
-    # ÚLTIMOS 60 CANDLES
-    # =====================================================
-
     periodo = df.tail(60)
 
     topo = periodo["High"].max()
@@ -277,10 +263,6 @@ def score_fibonacci(df):
 
     if amplitude <= 0:
         return 0
-
-    # =====================================================
-    # FIBONACCI
-    # =====================================================
 
     fib_382 = topo - (amplitude * 0.382)
 
@@ -294,27 +276,24 @@ def score_fibonacci(df):
 
     score = 0
 
-    # =====================================================
-    # PROXIMIDADE DAS REGIÕES
-    # =====================================================
-
     dist_382 = abs(close - fib_382) / close
     dist_50 = abs(close - fib_50) / close
     dist_618 = abs(close - fib_618) / close
 
-    if dist_382 < 0.015:
+    # =====================================================
+    # TOLERÂNCIA MAIS REALISTA
+    # =====================================================
+
+    if dist_382 < 0.03:
         score += 20
 
-    if dist_50 < 0.015:
+    if dist_50 < 0.03:
         score += 30
 
-    if dist_618 < 0.015:
+    if dist_618 < 0.03:
         score += 40
 
-    # =====================================================
-    # REAÇÃO INSTITUCIONAL
-    # =====================================================
-
+    # Reação institucional
     if close > ultimo["Open"]:
         score += 10
 
@@ -343,10 +322,6 @@ if st.button("📡 Rodar Radar"):
 
         try:
 
-            # =================================================
-            # DOWNLOAD
-            # =================================================
-
             df = yf.download(
                 ticker,
                 period="6mo",
@@ -355,10 +330,7 @@ if st.button("📡 Rodar Radar"):
                 auto_adjust=True
             )
 
-            # =================================================
-            # CORREÇÃO MULTIINDEX
-            # =================================================
-
+            # Corrige MultiIndex
             if isinstance(
                 df.columns,
                 pd.MultiIndex
@@ -367,10 +339,6 @@ if st.button("📡 Rodar Radar"):
                     df.columns
                     .get_level_values(0)
                 )
-
-            # =================================================
-            # VALIDAÇÃO
-            # =================================================
 
             if df.empty:
                 continue
@@ -383,6 +351,8 @@ if st.button("📡 Rodar Radar"):
             # =================================================
 
             arm = score_armadilha(df)
+
+            arm_ajustada = 100 - arm
 
             flux = score_fluxo(df)
 
@@ -398,7 +368,7 @@ if st.button("📡 Rodar Radar"):
             # =================================================
 
             final_score = (
-                (0.25 * arm)
+                (0.25 * arm_ajustada)
                 + (0.30 * flux)
                 + (0.30 * cont)
                 + (0.15 * fib)
