@@ -101,10 +101,7 @@ def score_armadilha(df):
     if rng == 0:
         return 0
 
-    # =====================================================
-    # BULL TRAP
-    # =====================================================
-
+    # Bull Trap
     if (
         ultimo["High"] > anterior["High"]
         and ultimo["Close"] < anterior["High"]
@@ -121,10 +118,7 @@ def score_armadilha(df):
     if ultimo["Close"] < ultimo["EMA69"]:
         bull += 15
 
-    # =====================================================
-    # BEAR TRAP
-    # =====================================================
-
+    # Bear Trap
     if (
         ultimo["Low"] < anterior["Low"]
         and ultimo["Close"] > anterior["Low"]
@@ -248,7 +242,6 @@ def score_continuidade(df, fluxo_score):
         ) - 1
     ) * 200
 
-    # Penalização mais leve
     prob -= vol * 400
 
     return max(5, min(95, prob))
@@ -296,10 +289,6 @@ def score_fibonacci(df):
     dist_50 = abs(close - fib_50) / close
     dist_618 = abs(close - fib_618) / close
 
-    # =====================================================
-    # TOLERÂNCIA MAIS REALISTA
-    # =====================================================
-
     if dist_382 < 0.03:
         score += 20
 
@@ -309,7 +298,6 @@ def score_fibonacci(df):
     if dist_618 < 0.03:
         score += 40
 
-    # Reação institucional
     if close > ultimo["Open"]:
         score += 10
 
@@ -385,7 +373,12 @@ def analisar_ativo(ticker):
             "Score Final": round(final_score, 1)
         }
 
-    except:
+    except Exception as e:
+
+        st.warning(
+            f"Erro em {ticker}: {e}"
+        )
+
         return None
 
 # =========================================================
